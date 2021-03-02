@@ -1,0 +1,265 @@
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { Button } from "primereact/components/button/Button";
+import { Link } from "react-router-dom";
+import { Dialog } from 'primereact/dialog';
+import { Growl } from "primereact/growl";
+import { VisitasService } from "./VisitasService";
+import { Accordion, AccordionTab } from 'primereact/accordion';
+import { Lightbox } from 'primereact/lightbox';
+import FormularioCrearVisita from "./formCrearVisita";
+import FormularioFirmaVisita from "./formFirmaVisita";
+import { DataTable } from "primereact/components/datatable/DataTable";
+import { Column } from "primereact/components/column/Column";
+
+const ConsultaVisitaFinca = () => {
+
+    const service = new VisitasService();
+    let { idVisita } = useParams();
+    const [visita, setVisita] = React.useState({});
+    const [images, setImages] = React.useState([]);
+    const [growl, setgrowl] = useState();
+    const [display, setDisplay] = useState(false);
+    const [displayImagen, setDisplayImagen] = useState(false);
+    const [dataIdVisita, setdataIdVisita] = useState(0);
+    const [finca2, setFinca2] = React.useState();
+    const [usuarioTecnico2, setUsuarioTecnico2] = React.useState();
+    const [municipio2, setMunicipio2] = React.useState();
+    const [temasvisitas2, setTemasVisita2] = React.useState();
+    const [dataIdentificacionA, setdataIdentificacionA] = useState(0);
+    const [dataTableSelection1, setDataTableSelection1] = useState();
+    const [temasVisitas, settemasVisitas] = useState();
+    const [relValue, setRelValue] = useState();
+
+    const consultarVisita = async () => {
+        let item = await service.consultarVisita(idVisita);
+        let img = [];
+        let arrayVisitas = [];
+
+        if (item.firmaProductor !== null && item.firmaProductor != "" && item.firmaProductor !== undefined) {
+            let firmaproductor = `${service.path}ECOM_SMS/v1/visitas/firmas/${item.numeroConsecutivoRecordVisita}/fincas/${item.finca2.nombreFinca}/${item.firmaProductor}`;
+            img.push({ source: firmaproductor, thumbnail: 'assets/demo/images/sopranos/firma.png', title: 'Firma Productor' })
+        }
+
+        if (item.firmaTecnico !== null && item.firmaTecnico != "" && item.firmaTecnico !== undefined) {
+            let firmaTecnico = `${service.path}ECOM_SMS/v1/visitas/firmas/${item.numeroConsecutivoRecordVisita}/fincas/${item.finca2.nombreFinca}/${item.firmaTecnico}`;
+            img.push({ source: firmaTecnico, thumbnail: 'assets/demo/images/sopranos/firmar.png', title: 'Firma Tecnico' })
+        }
+
+        let nuevoObjeto = []
+        //Recorrer el arreglo
+        item.temasVisitas.forEach(x => {
+            if (!nuevoObjeto.hasOwnProperty(x.tema)) {
+                nuevoObjeto[x.tema] = {
+                    idTemaVisita: x.idTemaVisita,
+                    tema: '',
+                    subtema: ''
+                }
+            }
+            //Agregar los datos
+            nuevoObjeto[x.tema].tema = x.tema2.nombre
+            nuevoObjeto[x.tema].subtema += x.subtema2.nombre + ', '
+        })
+
+        console.log(nuevoObjeto);
+
+        setVisita(item);
+        setdataIdentificacionA(item.finca);
+        setImages(img);
+        settemasVisitas(nuevoObjeto);
+
+
+        setFinca2(
+            item.finca2 ? item.finca2.nombreFinca : "N/A"
+        );
+
+        setUsuarioTecnico2(
+            item.usuarioTecnico2 ? `${item.usuarioTecnico2.nombre} ${item.usuarioTecnico2.apellido_1} ` : "N/A"
+        );
+
+        setMunicipio2(
+            item.municipio2 ? item.municipio2.nombre : "N/A"
+        );
+
+        setTemasVisita2(
+            item.temasvisitas2 ? item.temasvisitas2.tema2.nombre : "N/A"
+        )
+    }
+
+    const showSuccess = (msj, time) => {
+        let msg = {
+            life: time,
+            severity: "success",
+            summary: "Éxito",
+            detail: msj,
+        };
+        growl.show(msg);
+    };
+
+    const registroMensajes = (result) => {
+        if (result.resp) {
+            showSuccess(result.mensaje, 1000);
+            consultarVisita();
+        }
+        setDisplay(!result);
+        setDisplayImagen(!result);
+    };
+
+    useEffect(() => {
+        if (idVisita && idVisita != 0) {
+            consultarVisita();
+        }
+    }, []);
+
+    return (
+        <div className="p-grid p-fluid">
+            <Link to="/visitafinca">
+                <Button className="p-button-secondary mb-2 btn btn-success" icon="pi-md-arrow-back" />
+            </Link>
+            <div className="p-col-12 p-lg-12">
+                <div className="card card-w-title">
+                    <div className="p-grid">
+                        <div className="p-col-12 p-md-12 text-aling_right">
+
+                            <>
+                                <Button
+                                    type="button"
+                                    icon="pi-md-pencil"
+                                    className="p-button-info"
+                                    title="Editar Visita"
+                                    onClick={() => {
+                                        setdataIdVisita(visita.idVisita);
+                                        setDisplay(true);
+                                    }}
+
+                                />
+                                <Button
+                                    type="button"
+                                    icon="pi-md-folder"
+                                    className="p-button-warning"
+                                    title="Subir anexos"
+                                    onClick={() => {
+                                        setDisplayImagen(true);
+                                        setdataIdVisita(visita.idVisita);
+                                    }}
+
+                                />
+                            </>
+
+                        </div>
+                        <div className="p-col-12 p-md-4">
+                            <label className="title-bold">ID Visita</label><br />
+                            <span className="capitalize">{visita.idVisita}</span>
+                        </div>
+                        <div className="p-col-12 p-md-4">
+                            <label className="title-bold">Usuario Tecnico</label><br />
+                            <span className="capitalize">{usuarioTecnico2}</span>
+                        </div>
+                        <div className="p-col-12 p-md-4">
+                            <label className="title-bold">Municipio</label><br />
+                            <span className="capitalize">{municipio2}</span>
+                        </div>
+                        <div className="p-col-12 p-md-4">
+                            <label className="title-bold">Descripción</label><br />
+                            <span className="capitalize">{visita.descripcion}</span>
+                        </div>
+                        <div className="p-col-12 p-md-4">
+                            <label className="title-bold">Fecha</label><br />
+                            <span className="capitalize">{visita.fecha}</span>
+                        </div>
+                        <div className="p-col-12 p-md-4">
+                            <label className="title-bold">Longitud</label><br />
+                            <span className="capitalize">{visita.longitud}</span>
+                        </div>
+                        <div className="p-col-12 p-md-4">
+                            <label className="title-bold">Latitud</label><br />
+                            <span className="capitalize">{visita.latitiud}</span>
+                        </div>
+                        <div className="p-col-12 p-md-4">
+                            <label className="title-bold">Altitud</label><br />
+                            <span className="capitalize">{visita.altitud}</span>
+                        </div>
+                        <div className="p-col-12 p-md-4">
+                            <label className="title-bold">Finca</label><br />
+                            <span className="capitalize">{finca2}</span>
+                        </div>
+                        <div className="p-col-12 p-md-4">
+                            <label className="title-bold">No Consecutivo</label><br />
+                            <span className="capitalize">{visita.numeroConsecutivoRecordVisita}</span>
+                        </div>
+                        <div className="p-col-12 p-md-4">
+                            <label className="title-bold">Fecha Sistema</label><br />
+                            <span className="capitalize">{visita.fechaHoraSistema}</span>
+                        </div>
+                        {/* <div className="p-col-12 p-md-4">
+                            <label className="title-bold">Tema</label><br />
+                            <span className="capitalize">{
+                            temasVisitas.map((item, index) => (
+                             <>
+                                <span>
+                                    {item.idTemaVisita}
+                                </span>
+                                <span>
+                                    {item.tema}
+                                </span>
+                                <span>
+                                    {item.subtema}
+                                </span>
+                             </>
+                            ))
+                        }</span>
+                        </div> */}
+                        <Accordion>
+                            <AccordionTab header="Temas Asignados">
+                                <DataTable ref={(el) => setRelValue(el)} value={temasVisitas} selectionMode="single"
+                                    responsive={true} onSelectionChange={event => setDataTableSelection1(event.value)}>
+                                    <Column field="idTemaVisita" header="ID Visita" value={e => { return e.idTemaVisita }} filter={false} />
+                                    <Column field="tema" header="Tema" value={e => { return e.tema }} filter={false} />
+                                    <Column field="subtema" header="Subtema" value={e => { return e.subtema }} filter={false} />
+                                </DataTable>
+                                {
+                                    temasVisitas ? temasVisitas.map((item, index) => (
+                                        <p>
+                                            <span>
+                                                {item.idTemaVisita}
+                                            </span>
+                                            <span>
+                                                {item.tema}
+                                            </span>
+                                            <span>
+                                                {item.subtema}
+                                            </span>
+                                        </p>
+                                    )) : 'cargando'
+                                }
+                            </AccordionTab>
+                            <AccordionTab header="Anexos">
+                                <div className="p-grid" >
+                                    <Lightbox images={images} />
+                                </div>
+                            </AccordionTab>
+                        </Accordion>
+                        <Dialog header="Registrar Visita" visible={display} modal={true} style={{ width: '60vw' }} onHide={() => setDisplay(false)}>
+                            <FormularioCrearVisita visita={dataIdVisita} visita={idVisita} callback={registroMensajes.bind(this)} />
+                        </Dialog>
+                        <Dialog header="Anexos" visible={displayImagen} modal={true} style={{ width: '60vw' }} onHide={() => setDisplayImagen(false)}>
+                            <FormularioFirmaVisita
+                                visita={{
+                                    idVisita: dataIdVisita,
+                                    idFinca: dataIdentificacionA,
+                                }}
+                                callback={registroMensajes.bind(
+                                    this
+                                )}
+                            />
+                        </Dialog>
+                        <Growl ref={(el) => (setgrowl(el))} style={{ marginTop: "75px" }} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default ConsultaVisitaFinca
